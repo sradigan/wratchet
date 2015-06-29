@@ -1,7 +1,16 @@
 #include "wratchet/socket.h"
+#ifdef _WIN32
+	//block warnings from system headers on windows
+	#pragma warning(push, 0)
+#endif
 
 #include <stdio.h>
 #include <string.h>
+
+#ifdef _WIN32
+	//block warnings from system headers on windows
+	#pragma warning(pop)
+#endif
 
 #ifndef _WIN32
 	#include <unistd.h>
@@ -35,7 +44,7 @@ static void wratchet_display_message(const char* str)
 /// \detail Currently only required on Windows
 ///
 /// \return Returns 0 on success and -1 on failure
-int wratchet_init()
+int wratchet_init(void)
 {
 	#ifdef _WIN32
 		WSADATA wsa;
@@ -51,7 +60,7 @@ int wratchet_init()
 /// \brief Clean up wratchet
 ///
 /// \detail Currently only required on Windows
-void wratchet_cleanup()
+void wratchet_cleanup(void)
 {
 	#ifdef _WIN32
 		WSACleanup();
@@ -70,8 +79,13 @@ wratchet_socket wratchet_socket_create(const int domain,
                                        const int type,
                                        const int proto)
 {
-	int ret = socket(domain, type, proto);
-	if (0 != ret) {
+	wratchet_socket ret = socket(domain, type, proto);
+	#ifdef _WIN32
+		if (INVALID_SOCKET != ret)
+	#else
+		if (0 != ret)
+	#endif
+	{
 		wratchet_display_error("Error creating socket");
 	}
 	return ret;
@@ -108,7 +122,7 @@ int wratchet_socket_destroy(wratchet_socket s)
 /// \return Returns 0 on success, and non-zero on failure
 int wratchet_socket_connect(wratchet_socket s,
                             const wratchet_sockaddr* addr,
-                            size_t addrlen)
+                            wratchet_addrlen_t addrlen)
 {
 	int ret = connect(s, addr, addrlen);
 	if (0 != ret) {
@@ -127,7 +141,7 @@ int wratchet_socket_connect(wratchet_socket s,
 /// \return Returns 0 on success, and non-zero on failure
 int wratchet_socket_bind(wratchet_socket s,
                          const wratchet_sockaddr* addr,
-                         size_t addrlen)
+                         wratchet_addrlen_t addrlen)
 {
 	int ret = bind(s, addr, addrlen);
 	if (0 != ret) {
@@ -145,18 +159,17 @@ int wratchet_socket_bind(wratchet_socket s,
 /// (if smaller) upon return.
 ///
 /// \return Returns 0 on success, and non-zero on failure
-#ifdef _WIN32
 wratchet_socket wratchet_socket_accept(wratchet_socket s,
                                        wratchet_sockaddr* addr,
-                                       int* addrlen)
-#else
-wratchet_socket wratchet_socket_accept(wratchet_socket s,
-                                       wratchet_sockaddr* addr,
-                                       socklen_t* addrlen)
-#endif
+                                       wratchet_addrlen_t* addrlen)
 {
-	int ret = accept(s, addr, addrlen);
-	if (0 != ret) {
+	wratchet_socket ret = accept(s, addr, addrlen);
+	#ifdef _WIN32
+		if (INVALID_SOCKET != ret)
+	#else
+		if (0 != ret)
+	#endif
+	{
 		wratchet_display_error("Error accepting connection from socket");
 	}
 	return ret;
@@ -171,7 +184,7 @@ wratchet_socket wratchet_socket_accept(wratchet_socket s,
 /// \return Returns 0 on success, and non-zero on failure
 int wratchet_socket_send(wratchet_socket s,
                          const void* msg,
-                         size_t msglen)
+                         wratchet_msglen_t msglen)
 {
 	int ret = send(s, msg, msglen, 0);
 	if (0 != ret) {
@@ -192,9 +205,9 @@ int wratchet_socket_send(wratchet_socket s,
 /// \return Returns 0 on success, and non-zero on failure
 int wratchet_socket_sendto(wratchet_socket s,
                            const void* msg,
-                           size_t msglen,
+                           wratchet_msglen_t msglen,
                            const wratchet_sockaddr* addr,
-                           size_t addrlen)
+                           wratchet_addrlen_t addrlen)
 {
 	int ret = sendto(s, msg, msglen, 0, addr, addrlen);
 	if (0 != ret) {
@@ -213,7 +226,7 @@ int wratchet_socket_sendto(wratchet_socket s,
 /// the message in msg otherwise.
 int wratchet_socket_recv(wratchet_socket s,
                          void* msg,
-                         size_t msglen)
+                         wratchet_msglen_t msglen)
 {
 	int ret = recv(s, msg, msglen, 0);
 	if (0 == ret) {
@@ -241,19 +254,11 @@ int wratchet_socket_recv(wratchet_socket s,
 ///
 /// \return Returns 0, -1, or SOCKET_ERROR on failure.  Returns the length of
 /// the message in msg otherwise.
-#ifdef _WIN32
 int wratchet_socket_recvfrom(wratchet_socket s,
                              void* msg,
-                             size_t msglen,
+                             wratchet_msglen_t msglen,
                              wratchet_sockaddr* addr,
-                             int* addrlen)
-#else
-int wratchet_socket_recvfrom(wratchet_socket s,
-                             void* msg,
-                             size_t msglen,
-                             wratchet_sockaddr* addr,
-                             socklen_t* addrlen)
-#endif
+                             wratchet_addrlen_t* addrlen)
 {
 	int ret = recvfrom(s, msg, msglen, 0, addr, addrlen);
 	if (0 == ret) {
